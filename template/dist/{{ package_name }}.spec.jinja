@@ -54,5 +54,5 @@ that use %{name}.
 
 
 %changelog
-* {{ now.strftime('%b %d %Y') }} {{ author }} <{{ author_email }}> - {{ package_version }}-1
+* {{ now().strftime('%b %d %Y') }} {{ author_name }} <{{ author_email }}> - {{ package_version }}-1
 - Initial release of {{ package_name }} as an RPM.
