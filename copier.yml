@@ -1,0 +1,30 @@
+---
+
+package_name:
+  type: str
+  help: What is the name of the rpm package?
+
+package_url:
+  type: str
+  help: What is the URL of the project?
+
+package_description:
+  type: str
+  help: What is the description of the rpm package?
+
+package_initial_version:
+  type: str
+  help: What is the initial version of the package?
+
+package_include_devel:
+  type: bool
+  default: false
+  help: Will a devel package also be included?
+
+author_name:
+  type: str
+  help: What is the name of the author?
+
+author_email:
+  type: str
+  help: What is the email of the author?

@@ -1,0 +1,12 @@
+[workspace]
+authors = ["Jakub Wlodek <jwlodek@bnl.gov>"]
+channels = ["conda-forge"]
+name = "rpm-repo-template"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+copier = ">=9.13.1,<10"
+python = ">=3.13,<3.14"
