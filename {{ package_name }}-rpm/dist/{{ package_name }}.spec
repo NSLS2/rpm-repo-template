@@ -4,7 +4,7 @@
 Name:           {{ package_name }}
 Version:        {{ package_version }}
 Release:        1%{?dist}
-Summary:        Filter for improving compression of typed binary data.
+Summary:        {{ package_description }}
 
 License:        LicenseRef-Callaway-MIT
 URL:            https://github.com/NSLS2/{{ package_name }}-rpm
