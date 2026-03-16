@@ -10,9 +10,9 @@ License:        LicenseRef-Callaway-MIT
 URL:            https://github.com/NSLS2/{{ package_name }}-rpm
 Source0:        {{ package_url }}/archive/refs/tags/%{version}.tar.gz
 
-BuildRequires:  
-Requires:       
-Recommends:     
+#BuildRequires:
+#Requires:
+#Recommends:
 
 BuildArch:      x86_64
 
@@ -34,25 +34,23 @@ that use %{name}.
 
 {% endif %}
 %prep
+
 %autosetup
 
 %build
-# Build {{ package_name }}
 
 %install
-# Install {{ package_name }}
 
 %files
 %license LICENSE
 # Include executables and versioned shared libraries here.
-
 {% if package_include_devel %}
+
 %files devel
 %license LICENSE
 # Include header files and non-versioned shared libraries here.
 {% endif %}
 
-
 %changelog
-* {{ now().strftime('%b %d %Y') }} {{ author_name }} <{{ author_email }}> - {{ package_version }}-1
+* {{ creation_date }} {{ initial_author_name }} <{{ initial_author_email }}> - {{ initial_package_version }}-1
 - Initial release of {{ package_name }} as an RPM.

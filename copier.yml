@@ -30,3 +30,23 @@ author_email:
   help: What is the email of the author?
 
 _subdirectory: "template"
+
+creation_date:
+  type: str
+  default: "{{ '%Y-%m-%d %H:%M:%S' | strftime('%a %b %d %Y') }}"
+  when: false
+
+package_initial_version:
+  type: str
+  default: "{{ package_version }}"
+  when: false
+
+initial_author_name:
+  type: str
+  default: "{{ author_name }}"
+  when: false
+
+initial_author_email:
+  type: str
+  default: "{{ author_email }}"
+  when: false
