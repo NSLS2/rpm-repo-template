@@ -28,3 +28,5 @@ author_name:
 author_email:
   type: str
   help: What is the email of the author?
+
+_subdirectory: "template"
