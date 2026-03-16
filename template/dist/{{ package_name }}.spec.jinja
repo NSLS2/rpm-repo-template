@@ -14,14 +14,13 @@ Source0:        {{ package_url }}/archive/refs/tags/%{version}.tar.gz
 #Requires:
 #Recommends:
 
-BuildArch:      x86_64
+ExclusiveArch:      x86_64
 
 # Prevent rpmbuild from smart-generating dependencies list
 #AutoReq:        no
 
 %description
 {{ package_description }}
-
 {% if package_include_devel %}
 %package devel
 Summary:        Development files for %{name}
@@ -31,7 +30,6 @@ Requires:       %{name}%{?_includedirisa} = %{version}-%{release}
 This package contains the header files, unversioned shared libraries
 (e.g., .so files), and other resources needed for developing applications
 that use %{name}.
-
 {% endif %}
 %prep
 
@@ -43,14 +41,11 @@ that use %{name}.
 
 %files
 %license LICENSE
-# Include executables and versioned shared libraries here.
 {% if package_include_devel %}
-
 %files devel
 %license LICENSE
-# Include header files and non-versioned shared libraries here.
 {% endif %}
-
 %changelog
+
 * {{ creation_date }} {{ initial_author_name }} <{{ initial_author_email }}> - {{ initial_package_version }}-1
 - Initial release of {{ package_name }} as an RPM.
