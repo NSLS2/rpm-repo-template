@@ -33,10 +33,10 @@ _subdirectory: "template"
 
 creation_date:
   type: str
-  default: "{{ '%Y-%m-%d %H:%M:%S' | strftime('%a %b %d %Y') }}"
+  default: "{{ '%a %b %d %Y' | strftime }}"
   when: false
 
-package_initial_version:
+initial_package_version:
   type: str
   default: "{{ package_version }}"
   when: false
