@@ -22,7 +22,7 @@ BuildArch:      x86_64
 %description
 {{ package_description }}
 
-{% if pacakge_include_devel %}
+{% if package_include_devel %}
 %package devel
 Summary:        Development files for %{name}
 Requires:       %{name}%{?_includedirisa} = %{version}-%{release}
