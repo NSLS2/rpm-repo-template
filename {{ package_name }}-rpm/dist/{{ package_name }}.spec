@@ -2,7 +2,7 @@
 %global debug_package %{nil}
 
 Name:           {{ package_name }}
-Version:        {{ package_initial_version }}
+Version:        {{ package_version }}
 Release:        1%{?dist}
 Summary:        Filter for improving compression of typed binary data.
 
@@ -54,5 +54,5 @@ that use %{name}.
 
 
 %changelog
-* {{ now.strftime('%b %d %Y') }} {{ author }} <{{ author_email }}> - {{ package_initial_version }}-1
+* {{ now.strftime('%b %d %Y') }} {{ author }} <{{ author_email }}> - {{ package_version }}-1
 - Initial release of {{ package_name }} as an RPM.

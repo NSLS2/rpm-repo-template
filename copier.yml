@@ -12,9 +12,9 @@ package_description:
   type: str
   help: What is the description of the rpm package?
 
-package_initial_version:
+package_version:
   type: str
-  help: What is the initial version of the package?
+  help: What is the version of the package?
 
 package_include_devel:
   type: bool
