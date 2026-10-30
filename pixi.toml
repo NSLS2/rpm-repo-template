@@ -6,7 +6,22 @@ name = "rpm-repo-template"
 platforms = ["linux-64"]
 version = "0.1.0"
 
-[tasks]
+[tasks.generate-test-project]
+cmd = """\
+rm -rf build/test-project \
+&& copier copy --defaults --trust --vcs-ref=HEAD \
+--data package_name=test \
+--data package_url=https://github.com/NSLS2/test \
+--data 'package_description=Test package' \
+--data package_version=1.0.0 \
+--data 'author_name=CI User' \
+--data author_email=ci@localhost \
+. build/test-project \
+&& cd build/test-project \
+&& git init -q \
+&& git add -A \
+&& git -c user.name=ci -c user.email=ci@localhost commit -qm 'Initial commit'\
+"""
 
 [dependencies]
 copier = ">=9.13.1,<10"
