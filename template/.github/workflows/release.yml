@@ -1,99 +1,99 @@
 ---
 
-name: Create Release on Version Bump
+name: Sync Release with Specfile
 on:
-  push:
+  # Only release commits whose CI build succeeded
+  workflow_run:
+    workflows: ['Build RPMs and SRPMs']
+    types: [completed]
     branches:
       - main
-    paths:
-      - 'dist/*.spec'
   workflow_dispatch:
+    inputs:
+      force_publish:
+        description: 'Rebuild and re-upload packages for all EL versions, even if the release already has them.'
+        type: boolean
+        default: false
 
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  detect-release:
-    name: Detect New Release
+  sync-release:
+    name: Sync Release
+    if: >-
+      github.ref == 'refs/heads/main' && (
+        github.event_name == 'workflow_dispatch' || (
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_repository.full_name == github.repository
+        )
+      )
     runs-on: ubuntu-latest
+    env:
+      GH_REPO: ${{ github.repository }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # For workflow_run, github.sha is the branch head rather than the commit that was built
+      TARGET_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     permissions:
+      actions: read
       contents: write
     outputs:
-      created: ${{ steps.create.outputs.created }}
-      tag: ${{ steps.spec.outputs.tag }}
+      tag: ${{ steps.sync.outputs.tag }}
+      publish: ${{ steps.sync.outputs.publish }}
+      alma_versions: ${{ steps.sync.outputs.alma_versions }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          ref: ${{ env.TARGET_SHA }}
+
+      - name: Check that the CI build succeeded for this commit
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          successful_builds=$(gh api "repos/${GH_REPO}/actions/workflows/build.yml/runs?head_sha=${TARGET_SHA}&status=success" --jq .total_count)
+          if (( successful_builds == 0 )); then
+            echo "::error::No successful 'Build RPMs and SRPMs' run found for ${TARGET_SHA}. Wait for the build to pass, or re-run it, before releasing."
+            exit 1
+          fi
 
       - name: Install rpmspec
         run: |
           sudo apt-get update
           sudo apt-get install -y rpm
 
-      - name: Read version and latest changelog entry from specfile
-        id: spec
+      - name: Check that this run is for the latest commit
+        id: latest
         run: |
-          set -euo pipefail
-          spec=$(ls dist/*.spec)
-          # Drop %{?dist} so the tag does not depend on the build host
-          query() { rpmspec -q --srpm --define 'dist %{nil}' --qf "$1" "$spec"; }
-
-          version=$(query '%{VERSION}')
-          release=$(query '%{RELEASE}')
-          tag="${version}-${release}"
-          # The newest changelog entry is the first one in the spec
-          changelog_header=$(query '%{CHANGELOGNAME}')
-          query '%{CHANGELOGTEXT}' > release-notes.md
-
-          echo "Specfile version: ${tag}"
-          echo "Latest changelog entry: ${changelog_header}"
-
-          if [[ "${changelog_header}" != *" ${tag}" && "${changelog_header}" != *" ${version}" ]]; then
-            echo "::error file=${spec}::Latest %changelog entry ('${changelog_header}') does not match specfile version ${tag}. Add a changelog entry for the new version."
-            exit 1
+          # Prevents re-running an old workflow run from moving a release tag back to an older commit
+          head_sha=$(gh api "repos/${GH_REPO}/commits/main" --jq .sha)
+          if [[ "${head_sha}" != "${TARGET_SHA}" ]]; then
+            echo "::notice::${TARGET_SHA} is no longer the head of main; skipping. Use 'Run workflow' to sync the latest commit instead."
+            echo "is_latest=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_latest=true" >> "$GITHUB_OUTPUT"
           fi
 
-          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
-
-      - name: Create release, or update its notes if the changelog changed
-        id: create
+      - name: Sync release with specfile changelog
+        id: sync
+        if: steps.latest.outputs.is_latest == 'true'
         env:
-          GH_REPO: ${{ github.repository }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.spec.outputs.tag }}
-        run: |
-          set -euo pipefail
-          if gh release view "${TAG}" > /dev/null 2>&1; then
-            echo "created=false" >> "$GITHUB_OUTPUT"
-            # $(...) strips trailing newlines on both sides, so only real changes are detected
-            current_notes=$(gh release view "${TAG}" --json body --jq .body)
-            new_notes=$(cat release-notes.md)
-            if [[ "${current_notes}" == "${new_notes}" ]]; then
-              echo "Release ${TAG} already exists and its notes are up to date."
-            else
-              echo "Changelog for ${TAG} changed, updating release notes."
-              gh release edit "${TAG}" --notes-file release-notes.md
-            fi
-            exit 0
-          fi
-
-          gh release create "${TAG}" \
-            --target "${GITHUB_SHA}" \
-            --title "${TAG}" \
-            --notes-file release-notes.md
-          echo "created=true" >> "$GITHUB_OUTPUT"
-
+          # Keep in sync with the default matrix in publish.yml
+          ALMA_VERSIONS: '8 9 10'
+          FORCE_PUBLISH: ${{ inputs.force_publish || false }}
+        run: bash .github/scripts/sync-release.sh
 
   # Releases created with GITHUB_TOKEN do not trigger other workflows,
   # so the publish workflow must be called directly.
   publish:
     name: Publish
-    needs: detect-release
-    if: needs.detect-release.outputs.created == 'true'
+    needs: sync-release
+    if: needs.sync-release.outputs.publish == 'true'
     permissions:
       contents: write
     uses: ./.github/workflows/publish.yml
     with:
-      tag_name: ${{ needs.detect-release.outputs.tag }}
+      tag_name: ${{ needs.sync-release.outputs.tag }}
+      alma_versions: ${{ needs.sync-release.outputs.alma_versions }}
