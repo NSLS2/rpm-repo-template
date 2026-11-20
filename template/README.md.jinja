@@ -23,12 +23,45 @@ Releases are created automatically when a version bump is merged into `main`. To
 1. Update `Version:` (and/or `Release:`) in the spec file under `dist/`.
 2. Add a matching `%changelog` entry at the top, for example `* Fri Nov 20 2026 Jane Doe <jdoe@example.com> - 1.1.0-1`.
 
-Once merged, the release workflow tags `<version>-<release>`, creates a GitHub release using that changelog entry as the release notes, and uploads the built RPMs and SRPMs. If the changelog entry for an existing release is edited later, the release notes are updated to match. The workflow fails if the newest changelog entry does not match the spec version.
+Once merged and the *Build RPMs and SRPMs* CI workflow has passed on `main`, the release workflow tags `<version>-<release>`, creates a GitHub release using that changelog entry as the release notes, and uploads the built RPMs and SRPMs for each EL version.
+
+After every successful CI build on `main`, the workflow also keeps existing releases in sync with `%changelog`:
+
+* If the changelog entry for the **current** version is edited, its tag is moved to the new commit, the old packages are removed and rebuilt, and the release notes are updated.
+* If the changelog entry for an **older** version is edited, only that release's notes are updated.
+* If the current release is missing packages for any EL version (for example because a build or upload failed), they are built and uploaded on the next run.
+
+Release notes edited manually on GitHub are overwritten by the spec file changelog. The workflow fails if the newest changelog entry does not match the spec version.
+
+### Triggering a release manually
+
+To create or resume a release without pushing a new commit (for example, after a failed build or upload), run the release workflow manually against `main`:
+
+1. Open the **Actions** tab of this repository and select the *Sync Release with Specfile* workflow.
+2. Click **Run workflow**, keep the branch set to `main`, and click **Run workflow** again.
+
+Or, using the [GitHub CLI](https://cli.github.com/):
+
+```bash
+gh workflow run release.yml --ref main
+```
+
+The workflow uses the spec file on the latest commit of `main`. It creates the release if it does not exist yet, updates the release notes if needed, and uploads any missing packages. Manual runs only proceed if the *Build RPMs and SRPMs* workflow has succeeded for that commit; if it has not, re-run that build first.
+
+To rebuild and re-upload packages for all EL versions, even if the release already has them, tick **force_publish** in the **Run workflow** dialog, or run:
+
+```bash
+gh workflow run release.yml --ref main -f force_publish=true
+```
+
+Alternatively, re-running a failed *Sync Release with Specfile* run from the **Actions** tab resumes publishing, as long as no newer commits have been pushed to `main` since.
+
+## Updating the Template
 
 This repository is based on the [NSLS2 standard RPM packaging template](https://github.com/NSLS2/rpm-repo-template). To update the template to the most recent version, run:
 
 ```bash
-pixi run copier update
+pixi run update-template
 ```
 
 Note that you may need to resolve merge conflicts after updating.

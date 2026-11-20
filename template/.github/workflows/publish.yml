@@ -10,6 +10,11 @@ on:
         description: 'Tag of the release to upload packages to.'
         required: true
         type: string
+      alma_versions:
+        description: 'JSON list of EL versions to build and upload, e.g. [8, 10].'
+        required: false
+        type: string
+        default: '[8, 9, 10]'
 
 permissions:
   contents: write
@@ -21,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        alma_version: [8, 9, 10]
+        alma_version: ${{ fromJSON(inputs.alma_versions || '[8, 9, 10]') }}
     container:
       image: almalinux:${{ matrix.alma_version }}
     env:
@@ -36,6 +41,18 @@ jobs:
         uses: ./.github/actions/build-rpm-and-srpm
         with:
           alma_version: ${{ matrix.alma_version }}
+
+      - name: Install GitHub CLI
+        run: |
+          cat > /etc/yum.repos.d/gh-cli.repo << 'EOF'
+          [gh-cli]
+          name=packages for the GitHub CLI
+          baseurl=https://cli.github.com/packages/rpm
+          enabled=1
+          gpgcheck=1
+          gpgkey=https://cli.github.com/packages/githubcli-archive-keyring.asc
+          EOF
+          dnf install -y gh
 
       - name: Upload rpms to release
         run: |
