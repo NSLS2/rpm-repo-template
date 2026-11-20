@@ -1,6 +1,6 @@
 ---
 
-name: Run linter
+name: Lint
 on:
   push:
     branches:
@@ -11,15 +11,18 @@ on:
 
 jobs:
   lint:
+    name: Pre-Commit Linter Checks
     runs-on: ubuntu-latest
     container:
-      image: almalinux:9
+      # EL10 + EPEL provides rpmlint 2.x, which reads .rpmlint.toml (EL9 ships incompatible 1.x)
+      image: almalinux:10
       options: --user root
 
     steps:
       # git must be present before checkout so a real repo (with .git) is cloned for pre-commit
       - name: Install dependencies
         run: |
+          dnf install -y epel-release
           dnf install -y git rpmlint
 
       - name: Checkout code
