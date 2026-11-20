@@ -16,6 +16,15 @@ make srpm
 
 respectively.
 
+## Releases
+
+Releases are created automatically when a version bump is merged into `main`. To cut a new release:
+
+1. Update `Version:` (and/or `Release:`) in the spec file under `dist/`.
+2. Add a matching `%changelog` entry at the top, for example `* Fri Nov 20 2026 Jane Doe <jdoe@example.com> - 1.1.0-1`.
+
+Once merged, the release workflow tags `<version>-<release>`, creates a GitHub release using that changelog entry as the release notes, and uploads the built RPMs and SRPMs. If the changelog entry for an existing release is edited later, the release notes are updated to match. The workflow fails if the newest changelog entry does not match the spec version.
+
 This repository is based on the [NSLS2 standard RPM packaging template](https://github.com/NSLS2/rpm-repo-template). To update the template to the most recent version, run:
 
 ```bash

@@ -22,4 +22,4 @@ repos:
       entry: rpmlint
       language: system
       files: \.spec$
-      args: []
+      args: [--config, .rpmlint.toml]

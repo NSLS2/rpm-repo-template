@@ -1,0 +1,99 @@
+---
+
+name: Create Release on Version Bump
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'dist/*.spec'
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  detect-release:
+    name: Detect New Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      created: ${{ steps.create.outputs.created }}
+      tag: ${{ steps.spec.outputs.tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install rpmspec
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm
+
+      - name: Read version and latest changelog entry from specfile
+        id: spec
+        run: |
+          set -euo pipefail
+          spec=$(ls dist/*.spec)
+          # Drop %{?dist} so the tag does not depend on the build host
+          query() { rpmspec -q --srpm --define 'dist %{nil}' --qf "$1" "$spec"; }
+
+          version=$(query '%{VERSION}')
+          release=$(query '%{RELEASE}')
+          tag="${version}-${release}"
+          # The newest changelog entry is the first one in the spec
+          changelog_header=$(query '%{CHANGELOGNAME}')
+          query '%{CHANGELOGTEXT}' > release-notes.md
+
+          echo "Specfile version: ${tag}"
+          echo "Latest changelog entry: ${changelog_header}"
+
+          if [[ "${changelog_header}" != *" ${tag}" && "${changelog_header}" != *" ${version}" ]]; then
+            echo "::error file=${spec}::Latest %changelog entry ('${changelog_header}') does not match specfile version ${tag}. Add a changelog entry for the new version."
+            exit 1
+          fi
+
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Create release, or update its notes if the changelog changed
+        id: create
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.spec.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "${TAG}" > /dev/null 2>&1; then
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            # $(...) strips trailing newlines on both sides, so only real changes are detected
+            current_notes=$(gh release view "${TAG}" --json body --jq .body)
+            new_notes=$(cat release-notes.md)
+            if [[ "${current_notes}" == "${new_notes}" ]]; then
+              echo "Release ${TAG} already exists and its notes are up to date."
+            else
+              echo "Changelog for ${TAG} changed, updating release notes."
+              gh release edit "${TAG}" --notes-file release-notes.md
+            fi
+            exit 0
+          fi
+
+          gh release create "${TAG}" \
+            --target "${GITHUB_SHA}" \
+            --title "${TAG}" \
+            --notes-file release-notes.md
+          echo "created=true" >> "$GITHUB_OUTPUT"
+
+
+  # Releases created with GITHUB_TOKEN do not trigger other workflows,
+  # so the publish workflow must be called directly.
+  publish:
+    name: Publish
+    needs: detect-release
+    if: needs.detect-release.outputs.created == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/publish.yml
+    with:
+      tag_name: ${{ needs.detect-release.outputs.tag }}

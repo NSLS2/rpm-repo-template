@@ -1,0 +1,5 @@
+# rpmlint 2.x configuration, shared by local pre-commit runs and CI
+NetworkEnabled = false
+
+# Regexes of warnings/errors to ignore, e.g. "no-%check-section"
+Filters = []
